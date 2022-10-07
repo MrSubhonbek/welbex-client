@@ -4,103 +4,170 @@ import {
   MDBPaginationItem,
   MDBPaginationLink,
 } from "mdb-react-ui-kit";
-import React from "react";
-import { IExpenses } from "../models/IExpenses";
+import { FC, useState } from "react";
+import { IExpenses, ILimit, PagType } from "../store/models/IExpenses";
+import {
+  useFetchLimitDataMutation,
+  useFetchSearchDataMutation,
+  useFetchSortDataMutation,
+} from "../store/services/ExpensesService";
 
 interface IProps {
-  data: Array<IExpenses>;
-  pageLimit: number;
-  sortPagination: string;
-  currentPage: number;
-  operation: string;
-  loadsData: (
-    start: number,
-    end: number,
-    increase: number,
-    operation: string,
-    sortPagination: string
-  ) => void;
+  limit: ILimit;
+  typePag: PagType;
+  searchValue: string;
+  sortColum: string;
+  setData: (data: IExpenses[] | undefined) => void;
+  setLimit: (limit: ILimit) => void;
 }
 
-export const Pagination = (props: IProps) => {
-  if (props.data.length < 4 && props.currentPage === 0) return null;
-  if (props.currentPage === 0) {
+export const Pagination: FC<IProps> = ({
+  limit,
+  setData,
+  setLimit,
+  typePag,
+  searchValue,
+  sortColum,
+}) => {
+  const [currentPage, setCurrentPage] = useState(1);
+  const [normal, {}] = useFetchLimitDataMutation();
+  const [sort, {}] = useFetchSortDataMutation();
+  const [search, {}] = useFetchSearchDataMutation();
+  const increase = limit.end;
+  const handleNext = async () => {
+    switch (typePag) {
+      case "normal": {
+        const data = await normal({
+          start: limit.start + increase,
+          end: limit.end + increase,
+        }).unwrap();
+        if (data.length >= 1) {
+          setData(data);
+          setLimit({
+            start: limit.start + increase,
+            end: limit.end + increase,
+          });
+          setCurrentPage(currentPage + 1);
+        }
+        break;
+      }
+      case "search": {
+        const data = await search({
+          searchValue,
+          limit: {
+            start: limit.start + increase,
+            end: limit.end + increase,
+          },
+        }).unwrap();
+        if (data.length >= 1) {
+          setData(data);
+          setLimit({
+            start: limit.start + increase,
+            end: limit.end + increase,
+          });
+          setCurrentPage(currentPage + 1);
+        }
+        break;
+      }
+      case "sort": {
+        const data = await sort({
+          sortColum,
+          limit: {
+            start: limit.start + increase,
+            end: limit.end + increase,
+          },
+        }).unwrap();
+        if (data.length >= 1) {
+          setData(data);
+          setLimit({
+            start: limit.start + increase,
+            end: limit.end + increase,
+          });
+          setCurrentPage(currentPage + 1);
+        }
+        break;
+      }
+    }
+  };
+  const handlePrev = async () => {
+    if (currentPage <= 1) {
+      return;
+    }
+    switch (typePag) {
+      case "normal": {
+        const data = await normal({
+          start: limit.start - increase,
+          end: limit.end - increase,
+        }).unwrap();
+        setData(data);
+        setLimit({
+          start: limit.start - increase,
+          end: limit.end - increase,
+        });
+        setCurrentPage(currentPage - 1);
+        break;
+      }
+      case "search": {
+        const data = await search({
+          searchValue,
+          limit: {
+            start: limit.start - increase,
+            end: limit.end - increase,
+          },
+        }).unwrap();
+        setData(data);
+        setLimit({
+          start: limit.start - increase,
+          end: limit.end - increase,
+        });
+        setCurrentPage(currentPage - 1);
+        break;
+      }
+      case "sort": {
+        const data = await sort({
+          sortColum,
+          limit: {
+            start: limit.start - increase,
+            end: limit.end - increase,
+          },
+        }).unwrap();
+        setData(data);
+        setLimit({
+          start: limit.start - increase,
+          end: limit.end - increase,
+        });
+        setCurrentPage(currentPage - 1);
+        break;
+      }
+    }
+  };
+
+  const renderPagination = () => {
     return (
       <MDBPagination className="mb-0">
         <MDBPaginationItem>
-          <MDBPaginationLink>1</MDBPaginationLink>
+          <MDBBtn onClick={handlePrev}>Prev</MDBBtn>
         </MDBPaginationItem>
         <MDBPaginationItem>
-          <MDBBtn
-            onClick={() =>
-              props.loadsData(4, 8, 1, props.operation, props.sortPagination)
-            }
-          >
-            Next
-          </MDBBtn>
+          <MDBPaginationLink>{currentPage}</MDBPaginationLink>
+        </MDBPaginationItem>
+        <MDBPaginationItem>
+          <MDBBtn onClick={handleNext}>Next</MDBBtn>
         </MDBPaginationItem>
       </MDBPagination>
     );
-  } else if (props.currentPage < 4 - 1 && props.data.length === 4) {
-    return (
-      <MDBPagination className="mb-0">
-        <MDBPaginationItem>
-          <MDBBtn
-            onClick={() =>
-              props.loadsData(
-                (props.currentPage - 1) * 4,
-                props.currentPage * 4,
-                -1,
-                props.operation,
-                props.sortPagination
-              )
-            }
-          >
-            Prev
-          </MDBBtn>
-        </MDBPaginationItem>
-        <MDBPaginationItem>
-          <MDBPaginationLink>{props.currentPage + 1}</MDBPaginationLink>
-        </MDBPaginationItem>
-        <MDBPaginationItem>
-          <MDBBtn
-            onClick={() =>
-              props.loadsData(
-                (props.currentPage + 1) * 4,
-                (props.currentPage + 2) * 4,
-                1,
-                props.operation,
-                props.sortPagination
-              )
-            }
-          >
-            Next
-          </MDBBtn>
-        </MDBPaginationItem>
-      </MDBPagination>
-    );
-  } else {
-    return (
-      <MDBPagination className="mb-0">
-        <MDBPaginationItem>
-          <MDBBtn
-            onClick={() =>
-              props.loadsData(
-                (props.currentPage - 1) * 4,
-                props.currentPage * 4,
-                -1,
-                props.operation,
-                props.sortPagination
-              )
-            }
-          >
-            Prev
-          </MDBBtn>
-        </MDBPaginationItem>
-        <MDBPaginationItem>
-          <MDBPaginationLink>{props.currentPage + 1}</MDBPaginationLink>
-        </MDBPaginationItem>
-      </MDBPagination>
-    );
-  }
+  };
+
+  return (
+    <div
+      style={{
+        margin: "auto",
+        padding: "15px",
+        maxWidth: "250px",
+        alignContent: "center",
+      }}
+    >
+      {renderPagination()}
+    </div>
+  );
 };
